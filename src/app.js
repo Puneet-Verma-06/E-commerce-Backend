@@ -30,14 +30,24 @@ app.use(
 app.use(helmet());
 
 // CORS
+const allowedOrigins = [
+    process.env.CLIENT_URL?.replace(/\/$/, ""),
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+].filter(Boolean);
+
 app.use(
     cors({
-        origin: [
-            process.env.CLIENT_URL || "http://localhost:5173",
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-        ],
+        origin: (origin, callback) => {
+            // Allow requests with no origin (mobile apps, curl, Postman)
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error(`CORS: origin '${origin}' not allowed`));
+            }
+        },
         credentials: true,
     })
 );
