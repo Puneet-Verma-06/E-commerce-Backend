@@ -81,13 +81,16 @@ const productSchema = new mongoose.Schema(
     }
 );
 
-productSchema.pre("save", function () {
+productSchema.pre("save", function (next) {
     if (this.isModified("name")) {
-        this.slug = slugify(this.name, {
+        const base = slugify(this.name, {
             lower: true,
             strict: true,
         });
+        // Append a short timestamp suffix to guarantee uniqueness
+        this.slug = `${base}-${Date.now()}`;
     }
+    next();
 });
 
 export default mongoose.model("Product", productSchema);

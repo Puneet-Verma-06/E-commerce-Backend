@@ -2,24 +2,53 @@ import Product from "../models/product.model.js";
 
 /*
 |--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Convert a filesystem path to a URL-friendly /uploads/... path.
+ * On Vercel files land in /tmp/uploads/...; locally in <root>/uploads/...
+ */
+function toUrlPath(fsPath) {
+    // Normalise to forward slashes
+    const p = fsPath.replace(/\\/g, "/");
+    const marker = "/uploads/";
+    const idx = p.indexOf(marker);
+    return idx !== -1 ? p.slice(idx) : `/${p}`;
+}
+
+/**
+ * FormData sends booleans as the strings "true" / "false".
+ * Cast them back to proper JS booleans before saving.
+ */
+function castBooleans(data) {
+    const boolFields = ["featured", "isActive"];
+    boolFields.forEach((key) => {
+        if (data[key] !== undefined) {
+            if (data[key] === "true" || data[key] === true) data[key] = true;
+            else if (data[key] === "false" || data[key] === false) data[key] = false;
+        }
+    });
+    return data;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Create Product
 |--------------------------------------------------------------------------
 */
 
 export const createProduct = async (req, res) => {
     try {
-        const data = {
-            ...req.body,
-        };
+        const data = castBooleans({ ...req.body });
 
         if (req.files?.thumbnail) {
-            data.thumbnail = `/uploads/products/${req.files.thumbnail[0].filename}`;
+            data.thumbnail = toUrlPath(req.files.thumbnail[0].path);
         }
 
         if (req.files?.images) {
-            data.images = req.files.images.map(
-                (file) => `/uploads/products/${file.filename}`  
-            );
+            data.images = req.files.images.map((file) => toUrlPath(file.path));
         }
 
         const product = await Product.create(data);
@@ -30,7 +59,7 @@ export const createProduct = async (req, res) => {
             product,
         });
     } catch (error) {
-        console.error(error);
+        console.error("createProduct error:", error);
 
         return res.status(500).json({
             success: false,
@@ -72,8 +101,10 @@ export const getProducts = async (req, res) => {
 
 export const getProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id)
-            .populate("category", "name slug");
+        const product = await Product.findById(req.params.id).populate(
+            "category",
+            "name slug"
+        );
 
         if (!product) {
             return res.status(404).json({
@@ -102,9 +133,19 @@ export const getProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
     try {
+        const updateData = castBooleans({ ...req.body });
+
+        if (req.files?.thumbnail) {
+            updateData.thumbnail = toUrlPath(req.files.thumbnail[0].path);
+        }
+
+        if (req.files?.images) {
+            updateData.images = req.files.images.map((file) => toUrlPath(file.path));
+        }
+
         const product = await Product.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             {
                 new: true,
                 runValidators: true,
@@ -124,6 +165,7 @@ export const updateProduct = async (req, res) => {
             product,
         });
     } catch (error) {
+        console.error("updateProduct error:", error);
         return res.status(500).json({
             success: false,
             message: error.message,

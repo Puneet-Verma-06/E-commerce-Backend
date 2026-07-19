@@ -21,9 +21,11 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Serve uploaded files — locally from <root>/uploads, on Vercel from /tmp/uploads
 app.use(
     "/uploads",
-    express.static(path.join(__dirname, "../uploads"))
+    express.static(path.join(__dirname, "../uploads")),
+    express.static("/tmp/uploads")
 );
 
 // Security

@@ -1,16 +1,33 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// On Vercel the filesystem is read-only except /tmp.
+// Locally we write to <server-root>/uploads.
+const getBaseDir = () => {
+    if (process.env.VERCEL) {
+        return "/tmp/uploads";
+    }
+    return path.join(__dirname, "../../uploads");
+};
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const folder = req.baseUrl.includes("products")
-    ? "uploads/products"
-    : req.baseUrl.includes("categories")
-    ? "uploads/categories"
-    : req.baseUrl.includes("banners")
-    ? "uploads/banners"
-    : "uploads/users";
+        const baseDir = getBaseDir();
+
+        const subfolder = req.baseUrl.includes("products")
+            ? "products"
+            : req.baseUrl.includes("categories")
+            ? "categories"
+            : req.baseUrl.includes("banners")
+            ? "banners"
+            : "users";
+
+        const folder = path.join(baseDir, subfolder);
 
         if (!fs.existsSync(folder)) {
             fs.mkdirSync(folder, { recursive: true });
